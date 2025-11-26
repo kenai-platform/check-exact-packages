@@ -1,0 +1,10 @@
+- id: check-exact-packages
+  name: Check exact package versions
+  description: Enforces exact dependency versions (no ^ or ~) in package.json files
+  entry: check-exact-packages.sh
+  language: script
+  types: [json]
+  files: package\.json$
+  pass_filenames: false
+  always_run: true
+

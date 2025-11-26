@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# ANSI color codes
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Check for required dependencies
+check_dependency() {
+  local cmd=$1
+  local name=$2
+  local install_url=$3
+  
+  if ! command -v "$cmd" &> /dev/null; then
+    echo -e "${RED}Error: '$name' is not installed.${NC}" >&2
+    echo -e "Please install '$name' by following the instructions at: ${CYAN}$install_url${NC}" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Check all required dependencies
+missing_deps=0
+
+if ! check_dependency "git" "git" "https://git-scm.com/downloads"; then
+  missing_deps=1
+fi
+
+if ! check_dependency "jq" "jq" "https://jqlang.org/download/"; then
+  missing_deps=1
+fi
+
+# Exit if any dependencies are missing
+if [ "$missing_deps" -ne 0 ]; then
+  exit 1
+fi
+
+files=$(git ls-files 'package.json' '**/package.json')
+failed=0
+any_output=0
+
+for f in $files; do
+  # Get non-exact versions and format them
+  matches=$(jq -r '
+    (.dependencies // {}) + 
+    (.devDependencies // {}) + 
+    (.peerDependencies // {}) + 
+    (.optionalDependencies // {})
+    | to_entries[]
+    | select(.value | tostring | test("^[\\^~]"))
+    | "  • \(.key): \(.value)"
+  ' "$f" 2>/dev/null)
+  
+  if [ -n "$matches" ]; then
+    if [ "$any_output" -eq 0 ]; then
+      echo ""
+      any_output=1
+    fi
+    echo -e "${CYAN}$f${NC} has packages with non-exact versions:"
+    echo -e "${YELLOW}$matches${NC}"
+    echo ""
+    failed=1
+  fi
+done
+
+if [ "$failed" -ne 0 ]; then
+  echo -e "${RED}Error: Use exact versions (no ^ or ~) in package.json files${NC}"
+  exit 1
+fi
+
+echo "✓ All package.json files use exact versions"

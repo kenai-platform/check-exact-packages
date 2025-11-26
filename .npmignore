@@ -1,0 +1,31 @@
+# GitHub workflows (not needed in package)
+.github/
+
+# Husky hooks (not needed in package)
+.husky/
+
+# Pre-commit hooks config (not needed in package)
+.pre-commit-hooks.yaml
+
+# Git files
+.git/
+.gitignore
+
+# Documentation that's not needed
+CHANGELOG.md
+
+# Development files
+node_modules/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+

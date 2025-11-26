@@ -1,0 +1,38 @@
+{
+  "name": "@kenai-platform/check-exact-packages",
+  "version": "1.0.2",
+  "description": "Enforce exact dependency versions (no ^ or ~) in package.json files",
+  "main": "bin/check-exact-packages",
+  "bin": {
+    "check-exact-packages": "bin/check-exact-packages"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "chmod +x bin/check-exact-packages"
+  },
+  "keywords": [
+    "package.json",
+    "dependencies",
+    "exact-versions",
+    "security",
+    "ci",
+    "pre-commit",
+    "lint"
+  ],
+  "author": "Spookfish AI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Spookfish-ai/check-exact-packages.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ]
+}
