@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Actions are pinned to commit SHAs, which makes them immune to a moving tag
+  # but also invisible to "just use @v4". Dependabot rewrites the SHA and the
+  # trailing version comment, so pinning costs nothing to maintain.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

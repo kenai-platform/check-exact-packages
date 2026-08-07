@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # tag and create the GitHub Release
+  pull-requests: write # open and update the release PR
+  id-token: write # npm trusted publishing (OIDC)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Keeps a release PR open, tracking every conventional commit landed on
+      # main. Merging that PR bumps package.json, writes CHANGELOG.md, tags,
+      # and cuts the GitHub Release — which sets release_created for the
+      # publish steps below.
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: ${{ steps.release.outputs.release_created }}
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # OIDC trusted publishing needs npm >= 11.5.1; Node 22 ships older.
+      - name: Update npm
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm install -g npm@latest
+
+      # ponytail: no `npm ci` — this package has zero dependencies and no
+      # lockfile. The old workflow ran it and died on every release.
+      - name: Test
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm test
+
+      # No NODE_AUTH_TOKEN: auth comes from the OIDC token above. Requires a
+      # trusted publisher on npmjs.com pointing at this repo + release.yml.
+      - name: Publish to npm
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm publish --provenance --access public

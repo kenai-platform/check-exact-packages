@@ -1,14 +1,28 @@
 # @kenai-platform/check-exact-packages
 
-A CLI tool to enforce exact dependency versions (no `^` or `~` prefixes) in all `package.json` files across your repository. This helps ensure reproducible builds and prevents unexpected dependency updates.
+A CLI tool to enforce exact dependency versions in all `package.json` files across your repository. This helps ensure reproducible builds and prevents unexpected dependency updates.
 
 ## What it does
 
 - **Scans all `package.json` files** in the repository (including nested ones)
-- **Checks all dependency types**: `dependencies`, `devDependencies`, `peerDependencies`, and `optionalDependencies`
-- **Detects non-exact versions** that use `^` (caret) or `~` (tilde) prefixes
-- **Fails the check** if any non-exact versions are found
-- **Provides detailed output** showing which packages in which files have non-exact versions
+- **Checks `dependencies`, `devDependencies` and `optionalDependencies`**, each section separately
+- **Skips `peerDependencies`**, where ranges like `>=5` are correct
+- **Fails the check** if any spec is not pinned
+- **Provides detailed output** naming the file, the section and the offending spec
+
+### What passes
+
+| Spec | Example |
+|---|---|
+| Exact semver | `1.2.3` |
+| Exact prerelease / build metadata | `10.0.0-preview.14`, `1.0.0+build.1` |
+| Catalog protocol | `catalog:`, `catalog:react` |
+| Workspace protocol | `workspace:*`, `workspace:1.0.0` |
+
+Everything else fails — this is an allow-list, not a blocklist. That includes
+`^1.0.0`, `~1.0.0`, dist-tags (`preview`, `latest`, `next`, `canary`), wildcards
+(`*`, `""`), ranges (`>=1.0.0`, `1.x`, `1 || 2`), partial versions (`8.5`), and
+git / URL / `npm:` alias specs.
 
 ## Installation
 
@@ -116,8 +130,8 @@ Add this to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/Spookfish-ai/check-exact-packages
-    rev: v1.0.0  # Use the latest version tag
+  - repo: https://github.com/kenai-platform/check-exact-packages
+    rev: v2.0.0  # Use the latest version tag
     hooks:
       - id: check-exact-packages
 ```
@@ -183,25 +197,47 @@ When all versions are exact:
 ✓ All package.json files use exact versions
 ```
 
-## Publishing
+## Releasing
 
-This package is automatically published to npm when:
-- Changes are pushed to `main` branch that modify `check-exact-packages.sh` or `bin/check-exact-packages`
-- The version in `package.json` is manually updated
+Releases are automated with [release-please](https://github.com/googleapis/release-please). **Nobody edits the version by hand and nobody runs `npm publish`.**
 
-The publish workflow (`publish.yml`) will:
-- Automatically bump the patch version if the script changes
-- Publish to `@kenai-platform/check-exact-packages` on npm
-- Create a git tag for the new version
+The loop:
 
-**Note:** The workflow requires an `NPM_TOKEN` secret to be configured in GitHub Actions with publish permissions for the `@kenai-platform` scope.
+1. Land a [Conventional Commit](https://www.conventionalcommits.org/) on `main` — `fix:`, `feat:`, or anything with `!`/`BREAKING CHANGE:` for a major.
+2. release-please opens (or updates) a **release PR** with the next version and a generated `CHANGELOG.md`.
+3. Merge that release PR when you want to ship. That tags the commit, cuts a GitHub Release, and publishes to npm.
+
+Which commit prefix moves which number:
+
+| Prefix | Bump | Example |
+|---|---|---|
+| `fix:` | patch | `fix: handle empty dependency blocks` |
+| `feat:` | minor | `feat: report the dependency section on failure` |
+| `feat!:` / `BREAKING CHANGE:` | major | `feat!: reject dist-tags and ranges` |
+| `chore:`, `docs:`, `ci:`, `refactor:` | none | housekeeping, no release |
+
+Commits that don't parse as Conventional Commits are ignored — no bump, silently. Squash-merge PRs so the PR title becomes the commit subject, and keep that title conventional.
+
+Every published version carries [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the tarball on npm is cryptographically linked to the commit and workflow run that built it.
+
+### One-time setup
+
+Publishing uses npm [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) rather than a long-lived token — there is no `NPM_TOKEN` secret to leak or rotate. On npmjs.com, under the package's **Settings → Trusted Publisher**, point it at:
+
+| Field | Value |
+|---|---|
+| Repository | `kenai-platform/check-exact-packages` |
+| Workflow | `release.yml` |
+
+If you rename `.github/workflows/release.yml`, update it there too or publishing will start failing with an auth error.
 
 ## Development
 
-To contribute or modify this package:
+```bash
+git clone https://github.com/kenai-platform/check-exact-packages.git
+cd check-exact-packages
+npm test            # runs test/run.sh
+./bin/check-exact-packages   # run the checker against this repo
+```
 
-1. Clone the repository
-2. Make your changes
-3. Update the version in `package.json` if needed
-4. Test locally: `./check-exact-packages.sh` or `./bin/check-exact-packages`
-5. Commit and push - the publish workflow will handle publishing
+`test/run.sh` builds a throwaway git repo per case (the tool scans `git ls-files`) and asserts the exit code. Add a case there for any spec form you change the handling of. CI runs it on Ubuntu and macOS — the stock bash on macOS is 3.2, so keep the script portable.
