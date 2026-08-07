@@ -1,6 +1,6 @@
 {
   "name": "@kenai-platform/check-exact-packages",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Enforce exact dependency versions in package.json files — allow-list of exact semver, catalog: and workspace: specs",
   "main": "bin/check-exact-packages",
   "bin": {
