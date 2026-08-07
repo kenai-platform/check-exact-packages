@@ -197,25 +197,47 @@ When all versions are exact:
 ✓ All package.json files use exact versions
 ```
 
-## Publishing
+## Releasing
 
-This package is automatically published to npm when:
-- Changes are pushed to `main` branch that modify `check-exact-packages.sh` or `bin/check-exact-packages`
-- The version in `package.json` is manually updated
+Releases are automated with [release-please](https://github.com/googleapis/release-please). **Nobody edits the version by hand and nobody runs `npm publish`.**
 
-The publish workflow (`publish.yml`) will:
-- Automatically bump the patch version if the script changes
-- Publish to `@kenai-platform/check-exact-packages` on npm
-- Create a git tag for the new version
+The loop:
 
-**Note:** The workflow requires an `NPM_TOKEN` secret to be configured in GitHub Actions with publish permissions for the `@kenai-platform` scope.
+1. Land a [Conventional Commit](https://www.conventionalcommits.org/) on `main` — `fix:`, `feat:`, or anything with `!`/`BREAKING CHANGE:` for a major.
+2. release-please opens (or updates) a **release PR** with the next version and a generated `CHANGELOG.md`.
+3. Merge that release PR when you want to ship. That tags the commit, cuts a GitHub Release, and publishes to npm.
+
+Which commit prefix moves which number:
+
+| Prefix | Bump | Example |
+|---|---|---|
+| `fix:` | patch | `fix: handle empty dependency blocks` |
+| `feat:` | minor | `feat: report the dependency section on failure` |
+| `feat!:` / `BREAKING CHANGE:` | major | `feat!: reject dist-tags and ranges` |
+| `chore:`, `docs:`, `ci:`, `refactor:` | none | housekeeping, no release |
+
+Commits that don't parse as Conventional Commits are ignored — no bump, silently. Squash-merge PRs so the PR title becomes the commit subject, and keep that title conventional.
+
+Every published version carries [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the tarball on npm is cryptographically linked to the commit and workflow run that built it.
+
+### One-time setup
+
+Publishing uses npm [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) rather than a long-lived token — there is no `NPM_TOKEN` secret to leak or rotate. On npmjs.com, under the package's **Settings → Trusted Publisher**, point it at:
+
+| Field | Value |
+|---|---|
+| Repository | `kenai-platform/check-exact-packages` |
+| Workflow | `release.yml` |
+
+If you rename `.github/workflows/release.yml`, update it there too or publishing will start failing with an auth error.
 
 ## Development
 
-To contribute or modify this package:
+```bash
+git clone https://github.com/kenai-platform/check-exact-packages.git
+cd check-exact-packages
+npm test            # runs test/run.sh
+./bin/check-exact-packages   # run the checker against this repo
+```
 
-1. Clone the repository
-2. Make your changes
-3. Update the version in `package.json` if needed
-4. Test locally: `./check-exact-packages.sh` or `./bin/check-exact-packages`
-5. Commit and push - the publish workflow will handle publishing
+`test/run.sh` builds a throwaway git repo per case (the tool scans `git ls-files`) and asserts the exit code. Add a case there for any spec form you change the handling of. CI runs it on Ubuntu and macOS — the stock bash on macOS is 3.2, so keep the script portable.
