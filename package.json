@@ -1,13 +1,13 @@
 {
   "name": "@kenai-platform/check-exact-packages",
-  "version": "1.0.2",
-  "description": "Enforce exact dependency versions (no ^ or ~) in package.json files",
+  "version": "2.0.0",
+  "description": "Enforce exact dependency versions in package.json files — allow-list of exact semver, catalog: and workspace: specs",
   "main": "bin/check-exact-packages",
   "bin": {
     "check-exact-packages": "bin/check-exact-packages"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bash test/run.sh",
     "postinstall": "chmod +x bin/check-exact-packages"
   },
   "keywords": [
@@ -19,11 +19,11 @@
     "pre-commit",
     "lint"
   ],
-  "author": "Spookfish AI",
+  "author": "Kenai",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Spookfish-ai/check-exact-packages.git"
+    "url": "git+https://github.com/kenai-platform/check-exact-packages.git"
   },
   "publishConfig": {
     "access": "public"

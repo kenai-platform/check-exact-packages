@@ -40,24 +40,28 @@ files=$(git ls-files 'package.json' '**/package.json')
 failed=0
 any_output=0
 
+# Allow-list of acceptable specs. Anything not matching is a failure.
+#   - exact semver, including prerelease/build metadata (10.0.0-preview.14)
+#   - catalog: and catalog:<name>
+#   - workspace: protocol forms (workspace:*, workspace:^, workspace:1.0.0)
+# ponytail: peerDependencies is skipped entirely — ranges there are correct.
+ALLOWED='^([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?|catalog:[0-9A-Za-z._-]*|workspace:.+)$'
+
 for f in $files; do
   # Get non-exact versions and format them
-  matches=$(jq -r '
-    (.dependencies // {}) + 
-    (.devDependencies // {}) + 
-    (.peerDependencies // {}) + 
-    (.optionalDependencies // {})
-    | to_entries[]
-    | select(.value | tostring | test("^[\\^~]"))
-    | "  • \(.key): \(.value)"
+  matches=$(jq -r --arg allowed "$ALLOWED" '
+    ["dependencies", "devDependencies", "optionalDependencies"][] as $section
+    | (.[$section] // {} | to_entries[]) as $dep
+    | select(($dep.value | tostring | test($allowed)) | not)
+    | "  • \($section) → \($dep.key): \($dep.value)"
   ' "$f" 2>/dev/null)
-  
+
   if [ -n "$matches" ]; then
     if [ "$any_output" -eq 0 ]; then
       echo ""
       any_output=1
     fi
-    echo -e "${CYAN}$f${NC} has packages with non-exact versions:"
+    echo -e "${CYAN}$f${NC} has dependencies that are not pinned:"
     echo -e "${YELLOW}$matches${NC}"
     echo ""
     failed=1
@@ -65,7 +69,8 @@ for f in $files; do
 done
 
 if [ "$failed" -ne 0 ]; then
-  echo -e "${RED}Error: Use exact versions (no ^ or ~) in package.json files${NC}"
+  echo -e "${RED}Error: dependencies must be an exact version (1.2.3), catalog:, or workspace:${NC}"
+  echo -e "${RED}       ranges, dist-tags (preview, latest, next), wildcards and URLs are not allowed${NC}"
   exit 1
 fi
 

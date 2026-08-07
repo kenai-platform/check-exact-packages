@@ -1,14 +1,28 @@
 # @kenai-platform/check-exact-packages
 
-A CLI tool to enforce exact dependency versions (no `^` or `~` prefixes) in all `package.json` files across your repository. This helps ensure reproducible builds and prevents unexpected dependency updates.
+A CLI tool to enforce exact dependency versions in all `package.json` files across your repository. This helps ensure reproducible builds and prevents unexpected dependency updates.
 
 ## What it does
 
 - **Scans all `package.json` files** in the repository (including nested ones)
-- **Checks all dependency types**: `dependencies`, `devDependencies`, `peerDependencies`, and `optionalDependencies`
-- **Detects non-exact versions** that use `^` (caret) or `~` (tilde) prefixes
-- **Fails the check** if any non-exact versions are found
-- **Provides detailed output** showing which packages in which files have non-exact versions
+- **Checks `dependencies`, `devDependencies` and `optionalDependencies`**, each section separately
+- **Skips `peerDependencies`**, where ranges like `>=5` are correct
+- **Fails the check** if any spec is not pinned
+- **Provides detailed output** naming the file, the section and the offending spec
+
+### What passes
+
+| Spec | Example |
+|---|---|
+| Exact semver | `1.2.3` |
+| Exact prerelease / build metadata | `10.0.0-preview.14`, `1.0.0+build.1` |
+| Catalog protocol | `catalog:`, `catalog:react` |
+| Workspace protocol | `workspace:*`, `workspace:1.0.0` |
+
+Everything else fails — this is an allow-list, not a blocklist. That includes
+`^1.0.0`, `~1.0.0`, dist-tags (`preview`, `latest`, `next`, `canary`), wildcards
+(`*`, `""`), ranges (`>=1.0.0`, `1.x`, `1 || 2`), partial versions (`8.5`), and
+git / URL / `npm:` alias specs.
 
 ## Installation
 
@@ -116,8 +130,8 @@ Add this to your `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/Spookfish-ai/check-exact-packages
-    rev: v1.0.0  # Use the latest version tag
+  - repo: https://github.com/kenai-platform/check-exact-packages
+    rev: v2.0.0  # Use the latest version tag
     hooks:
       - id: check-exact-packages
 ```
