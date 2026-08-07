@@ -6,13 +6,26 @@ on:
 
 permissions:
   contents: write # tag and create the GitHub Release
-  pull-requests: write # open and update the release PR
   id-token: write # npm trusted publishing (OIDC)
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # The org forbids GITHUB_TOKEN from creating pull requests, so
+      # release-please runs as a GitHub App installed on this repo alone. The
+      # token is minted per run and expires in an hour.
+      #
+      # This is not only a permissions workaround: a PR opened with
+      # GITHUB_TOKEN does not trigger other workflows, so the release PR would
+      # never report the `test (...)` checks that main's ruleset requires and
+      # could never be merged. An App token does trigger them.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       # Keeps a release PR open, tracking every conventional commit landed on
       # main. Merging that PR bumps package.json, writes CHANGELOG.md, tags,
       # and cuts the GitHub Release — which sets release_created for the
@@ -20,6 +33,7 @@ jobs:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
+          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 

@@ -231,6 +231,17 @@ Publishing uses npm [trusted publishing](https://docs.npmjs.com/trusted-publishe
 
 If you rename `.github/workflows/release.yml`, update it there too or publishing will start failing with an auth error.
 
+Opening the release PR needs a second credential. The `kenai-platform` org forbids GitHub Actions from creating pull requests, so `GITHUB_TOKEN` cannot do it — release-please authenticates as a GitHub App instead. Two repository secrets:
+
+| Secret | Source |
+|---|---|
+| `RELEASE_APP_ID` | The App's ID, on its settings page |
+| `RELEASE_APP_PRIVATE_KEY` | A generated `.pem`, pasted whole |
+
+The App needs **Contents: read and write** and **Pull requests: read and write**, no webhook, and should be installed on this repository only. The workflow mints a token per run that expires in an hour; the private key is the only long-lived secret.
+
+There is a second reason for the App beyond permissions: a pull request opened with `GITHUB_TOKEN` does not trigger other workflows. The release PR would never report the `test (…)` checks that `main`'s ruleset requires, and so could never be merged. An App token does trigger them.
+
 ## Development
 
 ```bash
